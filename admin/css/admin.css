@@ -1,0 +1,95 @@
+/* Status badges */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-pendente {
+    background-color: #ffeeba;
+    color: #856404;
+}
+
+.status-analise {
+    background-color: #b8daff;
+    color: #004085;
+}
+
+.status-respondida {
+    background-color: #c3e6cb;
+    color: #155724;
+}
+
+.status-encerrada {
+    background-color: #d6d8db;
+    color: #383d41;
+}
+
+/* Identificação badges */
+.badge {
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: #fff;
+}
+
+/* Table adjustments */
+.wp-list-table th {
+    font-weight: 600;
+}
+
+.wp-list-table td {
+    vertical-align: middle;
+}
+
+.wp-list-table small {
+    color: #666;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Button styles */
+.button-small {
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+/* Mensagem de resposta */
+#mensagem-resposta {
+    margin: 20px 0;
+    padding: 12px 15px;
+    border-left-width: 4px;
+    border-left-style: solid;
+}
+
+.notice-success {
+    border-left-color: #46b450;
+    background: #fff;
+}
+
+.notice-error {
+    border-left-color: #dc3232;
+    background: #fff;
+}
+
+/* Spinner animation */
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

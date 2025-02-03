@@ -1,0 +1,119 @@
+/* Containers */
+.ouvidoria-form-container,
+.ouvidoria-consulta-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Títulos */
+.ouvidoria-form-container h2,
+.ouvidoria-consulta-container h2 {
+    color: #333;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+/* Campos do formulário */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #444;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.form-group .description {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Botões */
+.submit-button {
+    background: #0073aa;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.submit-button:hover {
+    background: #005177;
+}
+
+/* Mensagens */
+.mensagem {
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.mensagem.sucesso {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.mensagem.erro {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Resultado da consulta */
+.resultado-consulta {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.dados-solicitacao dl {
+    display: grid;
+    grid-template-columns: 30% 70%;
+    gap: 10px;
+}
+
+.dados-solicitacao dt {
+    font-weight: 600;
+    color: #666;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .ouvidoria-form-container,
+    .ouvidoria-consulta-container {
+        padding: 15px;
+    }
+
+    .dados-solicitacao dl {
+        grid-template-columns: 100%;
+    }
+}
