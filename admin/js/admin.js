@@ -18,7 +18,6 @@ jQuery(document).ready(function ($) {
   // Submissão do formulário de nova solicitação
   $('#form-nova-solicitacao').on('submit', function (e) {
     e.preventDefault()
-    console.log('Formulário submetido')
 
     var $form = $(this)
     var $submitButton = $form.find('button[type="submit"]')
@@ -75,9 +74,11 @@ jQuery(document).ready(function ($) {
 
     var $form = $(this)
     var $submitButton = $form.find('button[type="submit"]')
+    var $mensagem = $('#mensagem-resposta')
 
     // Desabilita o botão para evitar duplo envio
     $submitButton.prop('disabled', true)
+    $submitButton.html('<span class="dashicons dashicons-update-alt spin"></span> Enviando...')
 
     var formData = new FormData(this)
     formData.append('action', 'adicionar_resposta')
@@ -92,19 +93,37 @@ jQuery(document).ready(function ($) {
       success: function (response) {
         console.log('Resposta:', response)
         if (response.success) {
-          alert('Resposta enviada com sucesso!')
-          location.reload()
+          // Mostra mensagem de sucesso
+          $mensagem
+            .removeClass('notice-error')
+            .addClass('notice notice-success')
+            .html('<p>Resposta enviada com sucesso!</p>')
+            .slideDown()
+          
+          // Recarrega a página após 1 segundo
+          setTimeout(function() {
+            location.reload()
+          }, 1000)
         } else {
-          alert(response.data || 'Erro ao adicionar resposta')
+          $mensagem
+            .removeClass('notice-success')
+            .addClass('notice notice-error')
+            .html('<p>Erro ao enviar resposta: ' + (response.data || 'Erro desconhecido') + '</p>')
+            .slideDown()
         }
       },
       error: function (xhr, status, error) {
         console.log('Erro:', error)
-        alert('Erro ao enviar resposta: ' + error)
+        $mensagem
+          .removeClass('notice-success')
+          .addClass('notice notice-error')
+          .html('<p>Erro ao enviar resposta: ' + error + '</p>')
+          .slideDown()
       },
       complete: function () {
         // Reabilita o botão
         $submitButton.prop('disabled', false)
+        $submitButton.html('Enviar Resposta')
       }
     })
   })

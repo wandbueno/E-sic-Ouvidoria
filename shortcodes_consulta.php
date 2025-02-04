@@ -1,103 +1,178 @@
 <?php
-function ouvidoria_consulta_shortcode() {
+function ouvidoria_consulta_shortcode($atts) {
+    // Define os atributos padrão e mescla com os fornecidos
+    $atts = shortcode_atts(array(
+        'largura_total' => '600px',
+        'cor_botao' => '#0073aa',
+        'cor_hover' => '#005177',
+        'cor_texto' => '#ffffff'
+    ), $atts);
+
     ob_start();
     ?>
-    <div class="ouvidoria-consulta-container">
-        <h2>Consulta de Protocolo</h2>
-        
-        <form id="ouvidoria-consulta-form" class="ouvidoria-form">
+    <div class="ouvidoria-consulta-wrapper" style="max-width: <?php echo esc_attr($atts['largura_total']); ?>;">
+        <form id="form-consulta-protocolo" class="form-consulta-inline">
             <?php wp_nonce_field('ouvidoria_public_nonce', 'consulta_nonce'); ?>
             
-            <div class="form-group">
-                <label for="protocolo">Número do Protocolo</label>
-                <input type="text" 
-                       id="protocolo" 
-                       name="protocolo" 
-                       required 
-                       placeholder="Digite o número do protocolo"
-                       class="ouvidoria-input">
+            <div class="form-row">
+                <div class="input-group">
+                    <label for="protocolo">Número do Protocolo *</label>
+                    <div class="input-button-group">
+                        <input type="text" 
+                               id="protocolo" 
+                               name="protocolo" 
+                               required 
+                               placeholder="Digite o número do protocolo">
+                        <button type="submit" class="submit-button" 
+                                style="background-color: <?php echo esc_attr($atts['cor_botao']); ?>; 
+                                       color: <?php echo esc_attr($atts['cor_texto']); ?>;">
+                            <span class="button-text">Consultar</span>
+                            <div class="loading-spinner" style="display: none;">
+                                <div class="spinner"></div>
+                                <span>Consultando...</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </div>
-
-            <button type="submit" class="ouvidoria-button">Consultar</button>
-            
-            <div id="ouvidoria-mensagem" class="ouvidoria-mensagem" style="display: none;"></div>
         </form>
+    </div>
 
-        <div id="ouvidoria-resultado" class="ouvidoria-resultado" style="display: none;">
-            <h3>Resultado da Consulta</h3>
-            <div class="ouvidoria-detalhes"></div>
+    <!-- Modal com Resultado -->
+    <div id="modal-resultado" class="modal-consulta" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detalhes da Solicitação</h3>
+                <button class="fechar-modal" title="Fechar">&times;</button>
+            </div>
+            <div class="resultado-content">
+                <!-- Preenchido via JavaScript -->
+            </div>
         </div>
     </div>
 
     <style>
-    .ouvidoria-consulta-container {
-        max-width: 800px;
+    /* Container principal com largura personalizada */
+<style>
+    .ouvidoria-consulta-wrapper {
         margin: 0 auto;
-        padding: 20px;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .ouvidoria-form {
-        margin-bottom: 20px;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 600;
-    }
-
-    .ouvidoria-input {
         width: 100%;
-        padding: 10px;
+    }
+
+    .form-consulta-inline {
+        width: 100%;
+    }
+
+    .input-button-group {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .input-button-group input {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 12px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        font-size: 16px;
+        font-size: 14px;
     }
 
-    .ouvidoria-button {
-        background: #0073aa;
-        color: white;
-        padding: 10px 20px;
+    .input-button-group .submit-button {
+        padding: 8px 20px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 14px;
+        white-space: nowrap;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        transition: background-color 0.3s ease;
     }
 
-    .ouvidoria-button:hover {
-        background: #005177;
+    .input-button-group .submit-button:hover {
+        background-color: <?php echo esc_attr($atts['cor_hover']); ?> !important;
     }
 
-    .ouvidoria-mensagem {
-        padding: 10px;
-        margin: 10px 0;
-        border-radius: 4px;
+    /* Label */
+    .input-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
     }
 
-    .ouvidoria-mensagem.erro {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+    /* Loading spinner */
+    .loading-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
     }
 
-    .ouvidoria-resultado {
-        margin-top: 20px;
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid <?php echo esc_attr($atts['cor_texto']); ?>;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Modal */
+    .modal-consulta {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+    }
+
+    .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 600px;
+        margin: 5% auto;
         padding: 20px;
-        background: #f8f9fa;
-        border-radius: 4px;
+        border-radius: 8px;
+        position: relative;
     }
 
-    .ouvidoria-detalhes p {
-        margin-bottom: 10px;
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
         padding-bottom: 10px;
         border-bottom: 1px solid #ddd;
+    }
+
+    .fechar-modal {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #666;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .input-button-group {
+            flex-direction: column;
+        }
+
+        .input-button-group .submit-button {
+            width: 100%;
+            justify-content: center;
+        }
     }
     </style>
 

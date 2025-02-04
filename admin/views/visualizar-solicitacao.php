@@ -3,6 +3,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Configurar timezone para Brasília
+date_default_timezone_set('America/Sao_Paulo');
+
 // Pegar ID da solicitação
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -32,14 +35,14 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                     <?php echo esc_html(ucfirst($solicitacao->status)); ?>
                 </p>
             </div>
-			
+            
             <div class="header-actions">
                 <a href="<?php echo admin_url('admin-ajax.php?action=gerar_pdf_solicitacao&id=' . $id . '&nonce=' . wp_create_nonce('gerar_pdf_solicitacao')); ?>" 
                    class="button" target="_blank">
                     <span class="dashicons dashicons-pdf"></span> Gerar PDF
                 </a>
                 <div class="header-date">
-                    Data: <?php echo date('d/m/Y H:i', strtotime($solicitacao->data_criacao)); ?>
+                    Data: <?php echo wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)); ?>
                 </div>
             </div>
         </div>
@@ -122,7 +125,11 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                 <h3>Respostas</h3>
                 <?php if (!empty($respostas)): ?>
                     <div class="respostas-lista">
-                        <?php foreach ($respostas as $resposta): ?>
+                        <?php foreach ($respostas as $resposta): 
+                            // Converter a data da resposta para o timezone de Brasília
+                            $data_resposta = new DateTime($resposta->data_resposta, new DateTimeZone('UTC'));
+                            $data_resposta->setTimezone(new DateTimeZone('America/Sao_Paulo'));
+                        ?>
                             <div class="resposta-item">
                                 <div class="resposta-header">
                                     <div class="resposta-meta">
@@ -136,7 +143,7 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                                             <?php endif; ?>
                                         </div>
                                         <div class="resposta-data">
-                                            <?php echo esc_html($resposta->data_resposta_formatada); ?>
+                                            <?php echo $data_resposta->format('d/m/Y H:i'); ?>
                                         </div>
                                     </div>
                                 </div>
@@ -164,7 +171,7 @@ $status_encerrado = $solicitacao->status === 'encerrado';
             <div class="detail-section">
                 <h3>Adicionar Resposta</h3>
                 <form id="form-resposta" method="post" enctype="multipart/form-data">
-                    <?php wp_nonce_field('ouvidoria_admin_nonce', 'nonce'); ?>
+                    <?php wp_nonce_field('ouvidoria_admin_nonce', 'resposta_nonce'); ?>
                     <input type="hidden" name="solicitacao_id" value="<?php echo esc_attr($solicitacao->id); ?>">
                     
                     <table class="form-table">
@@ -264,7 +271,7 @@ $status_encerrado = $solicitacao->status === 'encerrado';
 
 .form-table th {
     width: 200px;
-    padding: 15px 10px 15px 0;
+    padding: 15px;
     font-weight: 600;
     color: #23282d;
 }
@@ -392,7 +399,7 @@ $status_encerrado = $solicitacao->status === 'encerrado';
 
 #form-resposta .form-table {
     background: #fff;
-    padding: 20px 20px 20px 40px; /* Increased left padding to 40px */
+    padding: 20px;
     border-radius: 6px;
     border: 1px solid #e5e5e5;
 }
@@ -412,9 +419,8 @@ $status_encerrado = $solicitacao->status === 'encerrado';
 
 #form-resposta .submit {
     margin-top: 20px;
-    padding: 20px 0 0 40px; /* Added left padding to match the form table */
+    padding: 20px 0 0;
     border-top: 1px solid #e5e5e5;
-    text-align: right;
 }
 
 /* Mensagem de encerrado */
@@ -473,7 +479,7 @@ jQuery(document).ready(function($) {
         
         var formData = new FormData(this);
         formData.append('action', 'adicionar_resposta');
-        formData.append('nonce', $('#nonce').val());
+        formData.append('nonce', $('#resposta_nonce').val());
         
         $.ajax({
             url: ajaxurl,
@@ -482,21 +488,15 @@ jQuery(document).ready(function($) {
             processData: false,
             contentType: false,
             success: function(response) {
-                console.log('Resposta do servidor:', response);
                 if (response.success) {
-                    // Se sucesso, apenas recarrega a página sem mostrar alerta
                     location.reload();
                 } else {
-                    // Se erro, mostra o alerta com a mensagem de erro
-                    alert('Erro ao adicionar resposta: ' + (response.data || 'Erro desconhecido'));
+                    alert(response.data || 'Erro ao adicionar resposta');
                     $submitButton.prop('disabled', false).html('Enviar Resposta');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Erro na requisição:', error);
-                console.error('Status:', status);
-                console.error('Resposta:', xhr.responseText);
-                
+                console.error('Erro:', error);
                 alert('Erro ao processar a resposta. Por favor, tente novamente.');
                 $submitButton.prop('disabled', false).html('Enviar Resposta');
             }

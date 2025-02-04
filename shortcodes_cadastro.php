@@ -1,9 +1,18 @@
 <?php
-function ouvidoria_formulario_shortcode() {
+function ouvidoria_formulario_shortcode($atts) {
+	// Define os atributos padrão e mescla com os fornecidos
+    $atts = shortcode_atts(array(
+        'largura' => '200px',  // Largura padrão do botão
+        'altura' => '80px',    // Altura padrão do botão
+        'cor_fundo' => '#0073aa',  // Cor de fundo padrão
+        'cor_hover' => '#005c88',  // Cor de hover padrão
+        'cor_texto' => '#ffffff'   // Cor do texto padrão
+    ), $atts);
+	
     ob_start();
     ?>
     <!-- Botão para manifestação -->
-    <button id="abrir-ouvidoria" class="botao-ouvidoria">
+    <button id="abrir-ouvidoria" class="botao-ouvidoria" style="width: <?php echo esc_attr($atts['largura']); ?>; height: <?php echo esc_attr($atts['altura']); ?>;">
         <span class="icone-ouvidoria">
             <svg viewBox="0 0 24 24" width="32" height="32">
                 <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>
@@ -145,16 +154,17 @@ function ouvidoria_formulario_shortcode() {
         padding: 15px 25px;
         border: none;
         border-radius: 12px;
-        color: white;
+        color: <?php echo esc_attr($atts['cor_texto']); ?>;
         cursor: pointer;
         transition: all 0.3s ease;
-        background: linear-gradient(145deg, #0073aa, #005c88);
+         background: <?php echo esc_attr($atts['cor_fundo']); ?>;
         box-shadow: 0 4px 15px rgba(0, 115, 170, 0.2);
     }
 
     .botao-ouvidoria:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0, 115, 170, 0.3);
+        background: <?php echo esc_attr($atts['cor_hover']); ?>;
     }
 
     .popup-ouvidoria {
@@ -173,7 +183,7 @@ function ouvidoria_formulario_shortcode() {
         position: relative;
         background: white;
         width: 90%;
-        max-width: 800px;
+        max-width: 1000px;
         margin: 5% auto;
         padding: 30px;
         border-radius: 16px;

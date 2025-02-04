@@ -3,7 +3,7 @@
  * Plugin Name: Sistema de Ouvidoria
  * Description: Sistema integrado de ouvidoria com Elementor
  * Version: 1.0.0
- * Author: Seu Nome
+ * Author: Wanderson Bueno
  */
 
 if (!defined('ABSPATH')) {
@@ -22,6 +22,7 @@ if (!defined('WP_CACHE')) {
 
 // Incluir classes principais
 require_once OUVIDORIA_PLUGIN_DIR . 'includes/class-ouvidoria-database.php';
+require_once OUVIDORIA_PLUGIN_DIR . 'includes/class-ouvidoria-pdf.php';
 require_once OUVIDORIA_PLUGIN_DIR . 'includes/class-ouvidoria-admin.php';
 require_once OUVIDORIA_PLUGIN_DIR . 'includes/class-ouvidoria-public.php';
 require_once plugin_dir_path(__FILE__) . 'shortcodes_cadastro.php';
