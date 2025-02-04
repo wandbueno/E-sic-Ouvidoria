@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sistema de Ouvidoria
  * Description: Sistema integrado de ouvidoria com Elementor
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Wanderson Bueno
  */
 
