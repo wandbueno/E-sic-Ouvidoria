@@ -24,6 +24,9 @@ class Ouvidoria_PDF {
         $options->set('defaultFont', 'DejaVu Sans');
 
         $dompdf = new \Dompdf\Dompdf($options);
+		
+		// Buscar respostas
+        $respostas = $this->database->get_respostas($solicitacao->id);
 
         // Gerar HTML do PDF usando o template compartilhado
         ob_start();
