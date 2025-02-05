@@ -381,19 +381,17 @@ class Ouvidoria_Database {
 
     public function get_respostas($solicitacao_id) {
         // Usar DISTINCT para evitar duplicatas e converter o timezone corretamente
-        $respostas = $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT DISTINCT r.*, u.display_name as nome_usuario
-				 FROM {$this->table_respostas} r
-				 LEFT JOIN {$this->wpdb->users} u ON r.respondido_por = u.ID
-				 WHERE r.solicitacao_id = %d 
-				 ORDER BY r.data_resposta DESC",
+         $respostas = $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT DISTINCT r.*, u.display_name as nome_usuario
+			 FROM {$this->table_respostas} r
+			 LEFT JOIN {$this->wpdb->users} u ON r.respondido_por = u.ID
+			 WHERE r.solicitacao_id = %d 
+			 ORDER BY r.data_resposta DESC",
 			$solicitacao_id
-        ));
+		));
         
-        foreach ($respostas as $resposta) {
-			// Formatar a data usando wp_date
-			$timestamp = strtotime($resposta->data_resposta);
-			$resposta->data_resposta_formatada = wp_date('d/m/Y H:i', $timestamp);
+         foreach ($respostas as $resposta) {
+			$resposta->data_resposta_formatada = wp_date('d/m/Y H:i', strtotime($resposta->data_resposta));
 			$resposta->nome_respondente = $resposta->nome_usuario ?: 'Usuário';
 		}
         
@@ -445,82 +443,61 @@ class Ouvidoria_Database {
 			
 			 // Configurar timezone para Brasília
        		 $this->wpdb->query("SET time_zone = '-03:00'");
+			
+			// Usar current_time() do WordPress para pegar a data/hora correta
+            $data_atual = current_time('mysql');
 
             // Preparar dados para inserção usando NOW() do MySQL
 			$dados_insert = array(
-				'solicitacao_id' => intval($dados['solicitacao_id']),
-				'resposta' => wp_kses_post($dados['resposta']),
-				'respondido_por' => intval($dados['respondido_por'])
-			);
-
-			 // Definir formatos dos campos
-			$formats = array(
-				'%d', // solicitacao_id
-				'%s', // resposta
-				'%d'  // respondido_por
-			);
+                'solicitacao_id' => intval($dados['solicitacao_id']),
+                'resposta' => wp_kses_post($dados['resposta']),
+                'respondido_por' => intval($dados['respondido_por']),
+                'data_resposta' => $data_atual
+            );
 			
-             // Adicionar arquivo se existir
-			if (!empty($dados['arquivo'])) {
-				$dados_insert['arquivo'] = intval($dados['arquivo']);
-				$formats[] = '%d';
-			}
+			// Adicionar arquivo se existir
+            if (!empty($dados['arquivo'])) {
+                $dados_insert['arquivo'] = intval($dados['arquivo']);
+            }
 			
 			error_log('Dados preparados para inserção: ' . print_r($dados_insert, true));
-
-            // Inserir resposta usando NOW() do MySQL
-			$query = $this->wpdb->prepare(
-				"INSERT INTO {$this->table_respostas} 
-				(solicitacao_id, resposta, respondido_por, data_resposta" . 
-				(!empty($dados['arquivo']) ? ", arquivo" : "") . ") 
-				VALUES (%d, %s, %d, NOW()" . 
-				(!empty($dados['arquivo']) ? ", %d" : "") . ")",
-				array_values($dados_insert)
-			);
-
-            $resultado = $this->wpdb->query($query);
+			
+			// Inserir resposta
+            $resultado = $this->wpdb->insert(
+                $this->table_respostas,
+                $dados_insert,
+                array(
+                    '%d', // solicitacao_id
+                    '%s', // resposta
+                    '%d', // respondido_por
+                    '%s', // data_resposta
+                    '%d'  // arquivo (se existir)
+                )
+            );
 
             if ($resultado === false) {
-				error_log('Erro ao inserir resposta: ' . $this->wpdb->last_error);
-				throw new Exception($this->wpdb->last_error ?: 'Erro desconhecido ao salvar resposta');
-			}
-
-            $resposta_id = $this->wpdb->insert_id;
-      	  error_log('Resposta inserida com sucesso. ID: ' . $resposta_id);
-
-            
-            if (!$resposta_id) {
-                // Se não houver insert_id, verificar se a resposta já existe
-                $resposta_id = $this->wpdb->get_var($this->wpdb->prepare(
-                    "SELECT id FROM {$this->table_respostas} 
-                    WHERE solicitacao_id = %d 
-                    AND resposta = %s 
-                    AND respondido_por = %d 
-                    ORDER BY id DESC 
-                    LIMIT 1",
-                    $dados_insert['solicitacao_id'],
-                    $dados_insert['resposta'],
-                    $dados_insert['respondido_por']
-                ));
+                error_log('Erro ao inserir resposta: ' . $this->wpdb->last_error);
+                throw new Exception($this->wpdb->last_error ?: 'Erro desconhecido ao salvar resposta');
             }
 
-            error_log('Resposta processada com sucesso. ID: ' . $resposta_id);
+            $resposta_id = $this->wpdb->insert_id;
+            error_log('Resposta inserida com sucesso. ID: ' . $resposta_id);
 
-           // Atualizar status da solicitação se fornecido
-			if (!empty($dados['status'])) {
-				$status_atualizado = $this->atualizar_status_solicitacao(
-					$dados['solicitacao_id'],
-					$dados['status']
-				);
+            // Atualizar status da solicitação se fornecido
+            if (!empty($dados['status'])) {
+                $status_atualizado = $this->atualizar_status_solicitacao(
+                    $dados['solicitacao_id'],
+                    $dados['status']
+                );
 
-				if (!$status_atualizado) {
-					error_log('Aviso: Erro ao atualizar status da solicitação');
-				}
-			}
+                if (!$status_atualizado) {
+                    error_log('Aviso: Erro ao atualizar status da solicitação');
+                }
+            }
 
             return $resposta_id;
 
-        } finally {
+         } finally {
             // Liberar o lock sempre
             $this->wpdb->query($this->wpdb->prepare(
                 "SELECT RELEASE_LOCK(%s)",
@@ -528,11 +505,11 @@ class Ouvidoria_Database {
             ));
         }
 
-    } catch (Exception $e) {
-        error_log('Exceção ao adicionar resposta: ' . $e->getMessage());
-        throw $e;
-    }
-}
+		} catch (Exception $e) {
+			error_log('Exceção ao adicionar resposta: ' . $e->getMessage());
+			throw $e;
+		}
+	}
 
 
     public function atualizar_status_solicitacao($id, $novo_status) {

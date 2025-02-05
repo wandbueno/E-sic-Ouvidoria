@@ -43,7 +43,7 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                 </a>
                 <div class="header-date">
                     Data: <?php echo wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)); ?>
-                </div>
+				</div>
             </div>
         </div>
 
@@ -143,8 +143,8 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                                             <?php endif; ?>
                                         </div>
                                         <div class="resposta-data">
-                                            <?php echo $data_resposta->format('d/m/Y H:i'); ?>
-                                        </div>
+											<?php echo wp_date('d/m/Y H:i', strtotime($resposta->data_resposta)); ?>
+  										</div>
                                     </div>
                                 </div>
                                 <div class="resposta-content">

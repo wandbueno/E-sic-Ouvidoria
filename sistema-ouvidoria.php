@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sistema de Ouvidoria
  * Description: Sistema integrado de ouvidoria com Elementor
- * Version: 1.0.1
+ * Version: 1.0.0
  * Author: Wanderson Bueno
  */
 
@@ -43,6 +43,7 @@ class Sistema_Ouvidoria {
     }
 
     private function __construct() {
+		date_default_timezone_set('America/Sao_Paulo');
         $this->init_hooks();
     }
 

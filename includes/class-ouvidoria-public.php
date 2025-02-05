@@ -113,7 +113,7 @@ class Ouvidoria_Public {
             $data = array(
                 'protocolo' => $solicitacao->protocolo,
                 'status' => isset($status_labels[$solicitacao->status]) ? $status_labels[$solicitacao->status] : ucfirst($solicitacao->status),
-                'data' => wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)),
+				'data' => wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)),
                 'tipo' => isset($tipo_labels[$solicitacao->tipo_manifestacao]) ? $tipo_labels[$solicitacao->tipo_manifestacao] : ucfirst($solicitacao->tipo_manifestacao),
                 'identificacao' => $solicitacao->identificacao,
                 'nome' => $solicitacao->identificacao === 'identificado' ? $solicitacao->nome : 'Anônimo',

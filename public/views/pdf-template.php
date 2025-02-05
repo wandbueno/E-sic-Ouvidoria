@@ -106,11 +106,11 @@
         <table>
             <tr>
                 <th>Data</th>
-                <td><?php echo wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)); ?></td>
+				<td><?php echo wp_date('d/m/Y H:i', strtotime($solicitacao->data_criacao)); ?></td>
             </tr>
             <tr>
                 <th>Status</th>
-                <td><?php echo esc_html(ucfirst($solicitacao->status)); ?></td>
+				<td><?php echo esc_html(ucfirst($solicitacao->status)); ?></td>
             </tr>
             <tr>
                 <th>Tipo</th>
@@ -179,13 +179,13 @@
         <?php foreach ($respostas as $resposta): ?>
             <div class="resposta-item">
                 <div class="resposta-meta">
-                    <?php 
+					<?php 
                     $user_info = get_userdata($resposta->respondido_por);
                     $nome_respondente = $user_info ? $user_info->display_name : 'Administrador';
                     ?>
-                    <strong>Respondido por:</strong> <?php echo esc_html($nome_respondente); ?> | 
-                    <strong>Data:</strong> <?php echo wp_date('d/m/Y H:i', strtotime($resposta->data_resposta)); ?>
-                </div>
+                   <strong>Respondido por:</strong> <?php echo esc_html($nome_respondente); ?> |  
+					<strong>Data:</strong> <?php echo wp_date('d/m/Y H:i', strtotime($resposta->data_resposta)); ?>
+				</div>
                 <div class="resposta-content">
                     <?php echo nl2br(wp_kses_post($resposta->resposta)); ?>
                     <?php if (!empty($resposta->arquivo)): ?>
