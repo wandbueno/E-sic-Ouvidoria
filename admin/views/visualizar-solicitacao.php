@@ -88,6 +88,10 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                             <th>Nome:</th>
                             <td><?php echo esc_html($solicitacao->nome); ?></td>
                         </tr>
+						 <tr>
+							<th>CPF/CNPJ:</th>
+							<td><?php echo esc_html($solicitacao->cpf_cnpj); ?></td>
+						</tr>
                         <?php if (!empty($solicitacao->email)): ?>
                             <tr>
                                 <th>E-mail:</th>
@@ -99,6 +103,10 @@ $status_encerrado = $solicitacao->status === 'encerrado';
                                 <th>Telefone:</th>
                                 <td><?php echo esc_html($solicitacao->telefone); ?></td>
                             </tr>
+							 <tr>
+								<th>Endereço:</th>
+								<td><?php echo nl2br(esc_html($solicitacao->endereco)); ?></td>
+							</tr>
                         <?php endif; ?>
                     <?php endif; ?>
                 </table>

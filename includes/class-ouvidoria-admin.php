@@ -231,13 +231,15 @@ public function adicionar_resposta() {
                 'status' => 'pendente'
             );
 
-            // Handle identified submissions
+            // Tratar submissões identificadas
             if ($_POST['identificacao'] === 'identificado') {
-                if (empty($_POST['nome']) || empty($_POST['email'])) {
-                    throw new Exception('Nome e email são obrigatórios para manifestações identificadas');
-                }
+					if (empty($_POST['nome']) || empty($_POST['email']) || empty($_POST['cpf_cnpj']) || empty($_POST['endereco'])) {
+					throw new Exception('Nome, email, CPF/CNPJ e endereço são obrigatórios para manifestações identificadas');
+				}
                 $dados['nome'] = sanitize_text_field($_POST['nome']);
                 $dados['email'] = sanitize_email($_POST['email']);
+				$dados['cpf_cnpj'] = sanitize_text_field($_POST['cpf_cnpj']);
+            	$dados['endereco'] = sanitize_textarea_field($_POST['endereco']);
                 if (!empty($_POST['telefone'])) {
                     $dados['telefone'] = sanitize_text_field($_POST['telefone']);
                 }
@@ -401,8 +403,10 @@ private function gerar_comprovante_html($dados) {
             <div class="info-block">
                 <h3>Dados do Manifestante</h3>
                 <p><strong>Nome:</strong> ' . esc_html($dados['nome']) . '</p>
+				<p><strong>CPF/CNPJ:</strong> ' . esc_html($dados['cpf_cnpj']) . '</p>
                 <p><strong>E-mail:</strong> ' . esc_html($dados['email']) . '</p>
                 ' . (!empty($dados['telefone']) ? '<p><strong>Telefone:</strong> ' . esc_html($dados['telefone']) . '</p>' : '') . '
+				<p><strong>Endereço:</strong> ' . nl2br(esc_html($dados['endereco'])) . '</p>
             </div>
             ' : '') . '
 

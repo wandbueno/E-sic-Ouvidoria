@@ -20,7 +20,10 @@
                 <label for="nome">Nome Completo</label>
                 <input type="text" name="nome" id="nome">
             </div>
-
+			 <div class="form-group col-6">
+				 <label for="cpf_cnpj">CPF/CNPJ</label>
+				 <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="cpf-cnpj-mask">
+			</div>
             <div class="form-group">
                 <label for="email">E-mail</label>
                 <input type="email" name="email" id="email">
@@ -30,6 +33,11 @@
                 <label for="telefone">Telefone</label>
                 <input type="tel" name="telefone" id="telefone" class="phone-mask">
             </div>
+			<div class="form-group">
+                <label for="endereco">Endereço Completo</label>
+                <textarea name="endereco" id="endereco" rows="3" placeholder="Rua, número, bairro, cidade, estado e CEP"></textarea>
+            </div>
+			
         </div>
 
         <div class="form-group">
@@ -61,3 +69,55 @@
         <div id="ouvidoria-mensagem" class="mensagem" style="display: none;"></div>
     </form>
 </div>
+<style>
+/* Estilos existentes... */
+
+/* Adicionar estilo para o novo campo de endereço */
+#endereco {
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* Ajuste para o layout em grid dos novos campos */
+.form-row {
+    display: flex;
+    margin: 0 -10px;
+    flex-wrap: wrap;
+}
+
+.form-row > .form-group {
+    padding: 0 10px;
+    flex: 1;
+}
+
+.col-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+@media (max-width: 768px) {
+    .col-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+</style>
+
+<script>
+jQuery(document).ready(function($) {
+    // Código existente...
+
+    // Adicionar máscaras para CPF/CNPJ
+    $('#cpf_cnpj').on('input', function() {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value.length <= 11) {
+            // Máscara de CPF
+            value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        } else {
+            // Máscara de CNPJ
+            value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        }
+        $(this).val(value);
+    });
+});
+</script>

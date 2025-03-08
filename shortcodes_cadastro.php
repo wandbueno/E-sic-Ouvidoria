@@ -26,7 +26,7 @@ function ouvidoria_formulario_shortcode($atts) {
         <div class="popup-conteudo">
             <span class="fechar-popup">&times;</span>
             
-            <h2 class="titulo-form-popup">Formulário de Manifestação e Solicitação</h2>
+            <h2 class="titulo-form-popup">Manifestação e Solicitação</h2>
             
             <form id="form-ouvidoria-public" method="post" enctype="multipart/form-data">
                 <?php wp_nonce_field('ouvidoria_public_nonce', 'nonce'); ?>
@@ -34,14 +34,7 @@ function ouvidoria_formulario_shortcode($atts) {
                 <div class="form-group">
                     <label>Tipo de Manifestação*</label>
                     <div class="tipos-manifestacao">
-                        <div class="tipo-item" data-value="reclamacao">
-                            <span class="emoji">😠</span>
-                            <span class="tipo-label">Reclamação</span>
-                        </div>
-                        <div class="tipo-item" data-value="denuncia">
-                            <span class="emoji">🚨</span>
-                            <span class="tipo-label">Denúncia</span>
-                        </div>
+                      
                         <div class="tipo-item" data-value="sugestao">
                             <span class="emoji">💡</span>
                             <span class="tipo-label">Sugestão</span>
@@ -53,6 +46,14 @@ function ouvidoria_formulario_shortcode($atts) {
                         <div class="tipo-item" data-value="informacao">
                             <span class="emoji">ℹ️</span>
                             <span class="tipo-label">Acesso à Informação</span>
+                        </div>
+						<div class="tipo-item" data-value="reclamacao">
+                            <span class="emoji">😠</span>
+                            <span class="tipo-label">Reclamação</span>
+                        </div>
+                        <div class="tipo-item" data-value="denuncia">
+                            <span class="emoji">🚨</span>
+                            <span class="tipo-label">Denúncia</span>
                         </div>
                     </div>
                     <input type="hidden" name="tipo_manifestacao" id="tipo_manifestacao" required>
@@ -80,12 +81,18 @@ function ouvidoria_formulario_shortcode($atts) {
                 </div>
 
                 <div class="campos-identificacao" style="display:none;">
-                    <div class="form-group">
-                        <label for="nome">Nome Completo*</label>
-                        <input type="text" name="nome" id="nome">
+                    <div class="form-row">
+						<div class="form-group col-6">
+							<label for="nome">Nome Completo*</label>
+							<input type="text" name="nome" id="nome">
+						</div>
+						<div class="form-group col-6">
+                            <label for="cpf_cnpj">CPF/CNPJ*</label>
+                            <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="cpf-cnpj-mask">
+                        </div>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row">						
                         <div class="form-group col-6">
                             <label for="email">E-mail*</label>
                             <input type="email" name="email" id="email">
@@ -95,6 +102,11 @@ function ouvidoria_formulario_shortcode($atts) {
                             <label for="telefone">Telefone</label>
                             <input type="tel" name="telefone" id="telefone">
                         </div>
+						 
+                    </div>
+					<div class="form-group">
+                        <label for="endereco">Endereço Completo*</label>
+						<input type="text" name="endereco" id="endereco" placeholder="Rua, número, bairro, cidade, estado e CEP"> 
                     </div>
                 </div>
 

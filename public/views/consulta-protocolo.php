@@ -357,8 +357,10 @@ jQuery(document).ready(function($) {
                     if (data.identificacao === 'identificado') {
                         html += '<dt>Identificação:</dt><dd>Identificado</dd>';
                         html += '<dt>Nome:</dt><dd>' + (data.nome || 'N/A') + '</dd>';
+						html += '<dt>CPF/CNPJ:</dt><dd>' + (data.cpf_cnpj || 'N/A') + '</dd>';
                         if (data.email) html += '<dt>E-mail:</dt><dd>' + data.email + '</dd>';
                         if (data.telefone) html += '<dt>Telefone:</dt><dd>' + data.telefone + '</dd>';
+						if (data.endereco) html += '<dt>Endereço:</dt><dd>' + data.endereco.replace(/\n/g, '<br>') + '</dd>';
                     } else {
                         html += '<dt>Identificação:</dt><dd>Anônimo</dd>';
                     }

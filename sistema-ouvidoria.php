@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sistema de Ouvidoria
  * Description: Sistema integrado de ouvidoria com Elementor
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Wanderson Bueno
  */
 
@@ -11,10 +11,9 @@ if (!defined('ABSPATH')) {
 }
 
 // Definições do Plugin
-define('OUVIDORIA_VERSION', '1.0.0');
+define('OUVIDORIA_VERSION', '1.0.1');
 define('OUVIDORIA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('OUVIDORIA_PLUGIN_URL', plugin_dir_url(__FILE__));
-
 
 if (!defined('WP_CACHE')) {
     define('WP_CACHE', true);
@@ -28,6 +27,7 @@ require_once OUVIDORIA_PLUGIN_DIR . 'includes/class-ouvidoria-public.php';
 require_once plugin_dir_path(__FILE__) . 'shortcodes_cadastro.php';
 require_once plugin_dir_path(__FILE__) . 'shortcodes_consulta.php';
 require_once plugin_dir_path(__FILE__) . 'shortcodes_estatisticas.php';
+require_once plugin_dir_path(__FILE__) . 'shortcodes_esic.php';
 
 class Sistema_Ouvidoria {
     private static $instance = null;
@@ -43,7 +43,15 @@ class Sistema_Ouvidoria {
     }
 
     private function __construct() {
-		date_default_timezone_set('America/Sao_Paulo');
+        // Configurar timezone
+        date_default_timezone_set('America/Sao_Paulo');
+        update_option('timezone_string', 'America/Sao_Paulo');
+        
+        // Adicionar filtro para garantir o timezone correto
+        add_filter('pre_option_gmt_offset', function() {
+            return -3; // GMT-3 para horário de Brasília
+        });
+        
         $this->init_hooks();
     }
 
@@ -51,11 +59,23 @@ class Sistema_Ouvidoria {
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
         add_action('plugins_loaded', array($this, 'init'));
+        
+        // Adicionar filtro para ajustar o horário no MySQL
+        add_action('init', array($this, 'set_mysql_timezone'));
     }
 
-    public function activate() {
+	public function set_mysql_timezone() {
+        global $wpdb;
+        $wpdb->query("SET time_zone = '-03:00'");
+    }
+	
+     public function activate() {
         $database = new Ouvidoria_Database();
         $database->create_tables();
+        
+        // Configurar timezone durante a ativação
+        update_option('timezone_string', 'America/Sao_Paulo');
+        
         flush_rewrite_rules();
     }
 

@@ -9,127 +9,212 @@ class Ouvidoria_Database {
     private $table_respostas;
     private $table_estatisticas_historicas;
     private $charset_collate;
-
+	
     public function __construct() {
-        global $wpdb;
-        $this->wpdb = $wpdb;
-        $this->table_solicitacoes = $wpdb->prefix . 'ouvidoria_solicitacoes';
-        $this->table_respostas = $wpdb->prefix . 'ouvidoria_respostas';
-        $this->table_estatisticas_historicas = $wpdb->prefix . 'ouvidoria_estatisticas_historicas';
-        $this->charset_collate = $wpdb->get_charset_collate();
+		global $wpdb;
+		$this->wpdb = $wpdb;
+		// Usar o prefixo correto do WordPress
+		$this->table_solicitacoes = $this->wpdb->prefix . 'ouvidoria_solicitacoes';
+		$this->table_respostas = $this->wpdb->prefix . 'ouvidoria_respostas';
+		$this->table_estatisticas_historicas = $this->wpdb->prefix . 'ouvidoria_estatisticas_historicas';
+		$this->charset_collate = $this->wpdb->get_charset_collate();
+	
+		 // Configurar timezone do MySQL
+    	$this->wpdb->query("SET time_zone = '-03:00'");
+		
+		 // Verifica e atualiza a estrutura da tabela quando necessário
+         add_action('admin_init', array($this, 'verificar_atualizacoes_tabela'));
+	}
+	
+	public function verificar_atualizacoes_tabela() {
+        $versao_atual = get_option('ouvidoria_db_version', '1.0');
+        
+        if (version_compare($versao_atual, '1.1', '<')) {
+            $this->atualizar_tabela_v1_1();
+            update_option('ouvidoria_db_version', '1.1');
+        }
     }
+	
+	  private function atualizar_tabela_v1_1() {
+        error_log('Iniciando atualização da tabela para versão 1.1');
+        
+        try {
+            // Verificar se a tabela existe
+            $tabela_existe = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_solicitacoes}'");
+            if (!$tabela_existe) {
+                error_log('Tabela de solicitações não existe');
+                return false;
+            }
 
-    public function verificar_tabelas() {
+            // Verificar e adicionar coluna cpf_cnpj
+            $coluna_cpf_cnpj = $this->wpdb->get_results("SHOW COLUMNS FROM {$this->table_solicitacoes} LIKE 'cpf_cnpj'");
+            if (empty($coluna_cpf_cnpj)) {
+                error_log('Adicionando coluna cpf_cnpj');
+                $this->wpdb->query("ALTER TABLE {$this->table_solicitacoes} 
+                                  ADD COLUMN cpf_cnpj varchar(20) NULL 
+                                  AFTER email");
+                
+                if ($this->wpdb->last_error) {
+                    error_log('Erro ao adicionar coluna cpf_cnpj: ' . $this->wpdb->last_error);
+                    return false;
+                }
+            }
+
+            // Verificar e adicionar coluna endereco
+            $coluna_endereco = $this->wpdb->get_results("SHOW COLUMNS FROM {$this->table_solicitacoes} LIKE 'endereco'");
+            if (empty($coluna_endereco)) {
+                error_log('Adicionando coluna endereco');
+                $this->wpdb->query("ALTER TABLE {$this->table_solicitacoes} 
+                                  ADD COLUMN endereco text NULL 
+                                  AFTER cpf_cnpj");
+                
+                if ($this->wpdb->last_error) {
+                    error_log('Erro ao adicionar coluna endereco: ' . $this->wpdb->last_error);
+                    return false;
+                }
+            }
+
+            error_log('Atualização da tabela concluída com sucesso');
+            return true;
+
+        } catch (Exception $e) {
+            error_log('Erro durante a atualização da tabela: ' . $e->getMessage());
+            return false;
+        }
+    }
+	
+   public function verificar_tabelas() {
+    $tabela_solicitacoes = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_solicitacoes}'");
+    $tabela_respostas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_respostas}'");
+    $tabela_estatisticas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_estatisticas_historicas}'");
+    
+    $precisa_criar = false;
+    
+    if (!$tabela_solicitacoes) {
+        error_log('Tabela de solicitações não encontrada');
+        $precisa_criar = true;
+    }
+    
+    if (!$tabela_respostas) {
+        error_log('Tabela de respostas não encontrada');
+        $precisa_criar = true;
+    }
+    
+    if (!$tabela_estatisticas) {
+        error_log('Tabela de estatísticas não encontrada');
+        $precisa_criar = true;
+    }
+    
+    if ($precisa_criar) {
+        error_log('Tentando criar tabelas faltantes...');
+        $this->create_tables();
+        
+        // Verificar novamente
         $tabela_solicitacoes = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_solicitacoes}'");
         $tabela_respostas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_respostas}'");
         $tabela_estatisticas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_estatisticas_historicas}'");
-        
-        if (!$tabela_solicitacoes || !$tabela_respostas || !$tabela_estatisticas) {
-            error_log('Tabelas não encontradas. Tentando criar...');
-            $this->create_tables();
-            
-            $tabela_solicitacoes = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_solicitacoes}'");
-            $tabela_respostas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_respostas}'");
-            $tabela_estatisticas = $this->wpdb->get_var("SHOW TABLES LIKE '{$this->table_estatisticas_historicas}'");
-        }
-        
-        return ($tabela_solicitacoes && $tabela_respostas && $tabela_estatisticas);
+    }
+    
+    return ($tabela_solicitacoes && $tabela_respostas && $tabela_estatisticas);
+}
+
+
+public function create_tables() {
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
+    error_log('=== INÍCIO VERIFICAÇÃO/CRIAÇÃO DAS TABELAS ===');
+
+    // Criar tabela de solicitações se não existir
+    $sql_solicitacoes = "CREATE TABLE IF NOT EXISTS {$this->table_solicitacoes} (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        protocolo varchar(20) NOT NULL,
+        data_criacao datetime DEFAULT CURRENT_TIMESTAMP,
+        identificacao enum('identificado','anonimo') NOT NULL,
+        nome varchar(100) NULL,
+        email varchar(100) NULL,
+        cpf_cnpj varchar(20) NULL,
+        endereco text NULL,
+        telefone varchar(20) NULL,
+        tipo_manifestacao varchar(50) NOT NULL,
+        tipo_resposta enum('sistema','presencial') DEFAULT 'sistema',
+        mensagem text NOT NULL,
+        arquivo bigint(20) NULL,
+        status enum('pendente','em_analise','respondida','encerrado','indeferida') DEFAULT 'pendente',
+        PRIMARY KEY  (id),
+        KEY protocolo (protocolo)
+    ) {$this->charset_collate};";
+
+    $resultado_solicitacoes = $this->wpdb->query($sql_solicitacoes);
+    
+    if ($resultado_solicitacoes === false) {
+        error_log('Erro ao verificar/criar tabela de solicitações: ' . $this->wpdb->last_error);
+        return false;
     }
 
-    public function create_tables() {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    // Criar tabela de respostas se não existir
+    $sql_respostas = "CREATE TABLE IF NOT EXISTS {$this->table_respostas} (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        solicitacao_id bigint(20) NOT NULL,
+        data_resposta datetime DEFAULT CURRENT_TIMESTAMP,
+        resposta text NOT NULL,
+        respondido_por bigint(20) NOT NULL,
+        arquivo bigint(20) NULL,
+        status varchar(50) NULL,
+        PRIMARY KEY  (id),
+        KEY solicitacao_id (solicitacao_id),
+        CONSTRAINT fk_solicitacao FOREIGN KEY (solicitacao_id) 
+        REFERENCES {$this->table_solicitacoes}(id) ON DELETE CASCADE
+    ) {$this->charset_collate};";
 
-        error_log('=== INÍCIO CRIAÇÃO DAS TABELAS ===');
-
-        // Primeiro, remover tabelas existentes para garantir criação limpa
-        $this->wpdb->query("DROP TABLE IF EXISTS {$this->table_respostas}");
-        $this->wpdb->query("DROP TABLE IF EXISTS {$this->table_solicitacoes}");
-        $this->wpdb->query("DROP TABLE IF EXISTS {$this->table_estatisticas_historicas}");
-
-        // Criar tabela de solicitações
-        $sql_solicitacoes = "CREATE TABLE {$this->table_solicitacoes} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            protocolo varchar(20) NOT NULL,
-            data_criacao datetime DEFAULT CURRENT_TIMESTAMP,
-            identificacao enum('identificado','anonimo') NOT NULL,
-            nome varchar(100) NULL,
-            email varchar(100) NULL,
-            telefone varchar(20) NULL,
-            tipo_manifestacao varchar(50) NOT NULL,
-            tipo_resposta enum('sistema','presencial') DEFAULT 'sistema',
-            mensagem text NOT NULL,
-            arquivo bigint(20) NULL,
-            status enum('pendente','em_analise','respondida','encerrado','indeferida') DEFAULT 'pendente',
-            PRIMARY KEY  (id),
-            KEY protocolo (protocolo)
-        ) {$this->charset_collate};";
-
-        $resultado_solicitacoes = $this->wpdb->query($sql_solicitacoes);
-        
-        if ($resultado_solicitacoes === false) {
-            error_log('Erro ao criar tabela de solicitações: ' . $this->wpdb->last_error);
-            return false;
-        }
-
-        // Criar tabela de respostas
-        $sql_respostas = "CREATE TABLE {$this->table_respostas} (
-			id bigint(20) NOT NULL AUTO_INCREMENT,
-			solicitacao_id bigint(20) NOT NULL,
-			data_resposta datetime DEFAULT CURRENT_TIMESTAMP,  // Mudado de timestamp para datetime
-			resposta text NOT NULL,
-			respondido_por bigint(20) NOT NULL,
-			arquivo bigint(20) NULL,
-			status varchar(50) NULL,
-			PRIMARY KEY  (id),
-			KEY solicitacao_id (solicitacao_id),
-			CONSTRAINT fk_solicitacao FOREIGN KEY (solicitacao_id) 
-			REFERENCES {$this->table_solicitacoes}(id) ON DELETE CASCADE
-		) {$this->charset_collate};";
-
-        $resultado_respostas = $this->wpdb->query($sql_respostas);
-        
-        if ($resultado_respostas === false) {
-            error_log('Erro ao criar tabela de respostas: ' . $this->wpdb->last_error);
-            return false;
-        }
-
-        // Criar tabela de estatísticas
-        $sql_estatisticas = "CREATE TABLE {$this->table_estatisticas_historicas} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            ano int(4) NOT NULL,
-            mes int(2) NOT NULL,
-            total_manifestacoes int NOT NULL DEFAULT 0,
-            reclamacoes int NOT NULL DEFAULT 0,
-            denuncias int NOT NULL DEFAULT 0,
-            sugestoes int NOT NULL DEFAULT 0,
-            elogios int NOT NULL DEFAULT 0,
-            informacoes int NOT NULL DEFAULT 0,
-            identificadas int NOT NULL DEFAULT 0,
-            anonimas int NOT NULL DEFAULT 0,
-            pendentes int NOT NULL DEFAULT 0,
-            em_analise int NOT NULL DEFAULT 0,
-            respondidas int NOT NULL DEFAULT 0,
-            encerradas int NOT NULL DEFAULT 0,
-            indeferidas int NOT NULL DEFAULT 0,
-            resposta_sistema int NOT NULL DEFAULT 0,
-            resposta_presencial int NOT NULL DEFAULT 0,
-            observacoes text NULL,
-            data_registro datetime DEFAULT CURRENT_TIMESTAMP,
-            registrado_por bigint(20) NOT NULL,
-            PRIMARY KEY  (id),
-            UNIQUE KEY ano_mes (ano, mes)
-        ) {$this->charset_collate};";
-
-        $resultado_estatisticas = $this->wpdb->query($sql_estatisticas);
-        
-        if ($resultado_estatisticas === false) {
-            error_log('Erro ao criar tabela de estatísticas: ' . $this->wpdb->last_error);
-            return false;
-        }
-
-        error_log('=== FIM CRIAÇÃO DAS TABELAS ===');
-        return true;
+    $resultado_respostas = $this->wpdb->query($sql_respostas);
+    
+    if ($resultado_respostas === false) {
+        error_log('Erro ao verificar/criar tabela de respostas: ' . $this->wpdb->last_error);
+        return false;
     }
+
+    // Criar tabela de estatísticas se não existir
+    $sql_estatisticas = "CREATE TABLE IF NOT EXISTS {$this->table_estatisticas_historicas} (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        ano int(4) NOT NULL,
+        mes int(2) NOT NULL,
+        total_manifestacoes int NOT NULL DEFAULT 0,
+        reclamacoes int NOT NULL DEFAULT 0,
+        denuncias int NOT NULL DEFAULT 0,
+        sugestoes int NOT NULL DEFAULT 0,
+        elogios int NOT NULL DEFAULT 0,
+        informacoes int NOT NULL DEFAULT 0,
+        identificadas int NOT NULL DEFAULT 0,
+        anonimas int NOT NULL DEFAULT 0,
+        pendentes int NOT NULL DEFAULT 0,
+        em_analise int NOT NULL DEFAULT 0,
+        respondidas int NOT NULL DEFAULT 0,
+        encerradas int NOT NULL DEFAULT 0,
+        indeferidas int NOT NULL DEFAULT 0,
+        resposta_sistema int NOT NULL DEFAULT 0,
+        resposta_presencial int NOT NULL DEFAULT 0,
+        observacoes text NULL,
+        data_registro datetime DEFAULT CURRENT_TIMESTAMP,
+        registrado_por bigint(20) NOT NULL,
+        PRIMARY KEY  (id),
+        UNIQUE KEY ano_mes (ano, mes)
+    ) {$this->charset_collate};";
+
+    $resultado_estatisticas = $this->wpdb->query($sql_estatisticas);
+    
+    if ($resultado_estatisticas === false) {
+        error_log('Erro ao verificar/criar tabela de estatísticas: ' . $this->wpdb->last_error);
+        return false;
+    }
+
+    // Verificar e adicionar colunas se necessário
+    $this->verificar_atualizacoes_tabela();
+
+    error_log('=== FIM VERIFICAÇÃO/CRIAÇÃO DAS TABELAS ===');
+    return true;
+}
+
+
 
     public function inserir_estatistica_historica($dados) {
         error_log('=== INÍCIO INSERÇÃO DE ESTATÍSTICA HISTÓRICA ===');
@@ -229,81 +314,95 @@ class Ouvidoria_Database {
     }
 
     public function get_solicitacao_by_protocolo($protocolo) {
-        return $this->wpdb->get_row(
-            $this->wpdb->prepare(
-                "SELECT * FROM {$this->table_solicitacoes} WHERE protocolo = %s",
-                $protocolo
-            )
-        );
+        return $this->wpdb->get_row($this->wpdb->prepare(
+			"SELECT id, protocolo, data_criacao, identificacao, nome, email, 
+					cpf_cnpj, endereco, telefone, tipo_manifestacao, tipo_resposta, 
+					mensagem, arquivo, status 
+			 FROM {$this->table_solicitacoes} 
+			 WHERE protocolo = %s",
+			$protocolo
+		));
     }
 
-    public function inserir_solicitacao($dados) {
-        error_log('=== INÍCIO INSERÇÃO DE SOLICITAÇÃO ===');
-        error_log('Dados recebidos: ' . print_r($dados, true));
-        
-        if (!$this->verificar_tabelas()) {
-            error_log('Erro: Tabelas não existem');
-            return false;
-        }
-        
-        // Set default tipo_resposta if not provided
-        if (!isset($dados['tipo_resposta'])) {
-            $dados['tipo_resposta'] = 'sistema';
-        }
-        
-        // Campos obrigatórios
-        $campos_obrigatorios = array(
-            'protocolo',
-            'identificacao',
-            'tipo_manifestacao',
-            'tipo_resposta',
-            'mensagem'
-        );
-        
-        foreach ($campos_obrigatorios as $campo) {
-            if (empty($dados[$campo])) {
-                error_log("Campo obrigatório faltando: {$campo}");
-                return false;
-            }
-        }
-        
-        // Valores padrão
-        $dados['data_criacao'] = current_time('mysql');
-        $dados['status'] = isset($dados['status']) ? $dados['status'] : 'pendente';
-        
-        // Validação específica para solicitações identificadas
-        if ($dados['identificacao'] === 'identificado') {
-            if (empty($dados['nome']) || empty($dados['email'])) {
-                error_log('Campos nome e email são obrigatórios para solicitação identificada');
-                return false;
-            }
-        } else {
-            unset($dados['nome'], $dados['email'], $dados['telefone']);
-        }
-        
-        // Remove campos vazios
-        $dados = array_filter($dados, function($value) {
-            return $value !== '' && $value !== null;
-        });
-        
-        error_log('Dados processados para inserção: ' . print_r($dados, true));
-        
-        // Tenta inserir os dados
-        $resultado = $this->wpdb->insert(
-            $this->table_solicitacoes,
-            $dados
-        );
-        
-        if ($resultado === false) {
-            error_log('Erro MySQL: ' . $this->wpdb->last_error);
-            return false;
-        }
-        
-        $insert_id = $this->wpdb->insert_id;
-        error_log('Solicitação inserida com sucesso. ID: ' . $insert_id);
-        
-        return $insert_id;
+public function inserir_solicitacao($dados) {
+    error_log('=== INÍCIO INSERÇÃO DE SOLICITAÇÃO ===');
+    error_log('Dados recebidos: ' . print_r($dados, true));
+    
+    if (!$this->verificar_tabelas()) {
+        error_log('Erro: Tabelas não existem');
+        return false;
     }
+    
+    // Set default tipo_resposta if not provided
+    if (!isset($dados['tipo_resposta'])) {
+        $dados['tipo_resposta'] = 'sistema';
+    }
+    
+    // Campos obrigatórios
+    $campos_obrigatorios = array(
+        'protocolo',
+        'identificacao',
+        'tipo_manifestacao',
+        'tipo_resposta',
+        'mensagem'
+    );
+    
+    foreach ($campos_obrigatorios as $campo) {
+        if (empty($dados[$campo])) {
+            error_log("Campo obrigatório faltando: {$campo}");
+            return false;
+        }
+    }
+    
+    // Valores padrão
+    $dados['data_criacao'] = current_time('mysql');
+    $dados['status'] = isset($dados['status']) ? $dados['status'] : 'pendente';
+    
+    // Preparar dados para inserção
+    $dados_insert = array(
+        'protocolo' => $dados['protocolo'],
+        'data_criacao' => $dados['data_criacao'],
+        'identificacao' => $dados['identificacao'],
+        'tipo_manifestacao' => $dados['tipo_manifestacao'],
+        'tipo_resposta' => $dados['tipo_resposta'],
+        'mensagem' => $dados['mensagem'],
+        'status' => $dados['status']
+    );
+
+    // Adicionar campos de identificação se necessário
+    if ($dados['identificacao'] === 'identificado') {
+        if (!empty($dados['nome'])) $dados_insert['nome'] = sanitize_text_field($dados['nome']);
+        if (!empty($dados['email'])) $dados_insert['email'] = sanitize_email($dados['email']);
+        if (!empty($dados['telefone'])) $dados_insert['telefone'] = sanitize_text_field($dados['telefone']);
+        if (!empty($dados['cpf_cnpj'])) $dados_insert['cpf_cnpj'] = sanitize_text_field($dados['cpf_cnpj']);
+        if (!empty($dados['endereco'])) $dados_insert['endereco'] = sanitize_textarea_field($dados['endereco']);
+    }
+
+    // Adicionar arquivo se existir
+    if (!empty($dados['arquivo'])) {
+        $dados_insert['arquivo'] = $dados['arquivo'];
+    }
+    
+    error_log('Dados processados para inserção: ' . print_r($dados_insert, true));
+    
+    // Tenta inserir os dados
+    $resultado = $this->wpdb->insert(
+        $this->table_solicitacoes,
+        $dados_insert
+    );
+    
+    if ($resultado === false) {
+        error_log('Erro MySQL: ' . $this->wpdb->last_error);
+        return false;
+    }
+    
+    $insert_id = $this->wpdb->insert_id;
+    error_log('Solicitação inserida com sucesso. ID: ' . $insert_id);
+    
+    return $insert_id;
+}
+
+
 
     public function get_solicitacoes($args = array()) {
         $defaults = array(
@@ -363,9 +462,13 @@ class Ouvidoria_Database {
         }
 
         $solicitacao = $this->wpdb->get_row($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_solicitacoes} WHERE id = %d",
-            $id
-        ));
+        "SELECT id, protocolo, data_criacao, identificacao, nome, email, 
+                cpf_cnpj, endereco, telefone, tipo_manifestacao, tipo_resposta, 
+                mensagem, arquivo, status 
+         FROM {$this->table_solicitacoes} 
+         WHERE id = %d",
+        $id
+    ));
 
         if (!$solicitacao) {
             return false;

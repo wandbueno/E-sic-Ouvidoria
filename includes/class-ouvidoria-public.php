@@ -119,6 +119,8 @@ class Ouvidoria_Public {
                 'nome' => $solicitacao->identificacao === 'identificado' ? $solicitacao->nome : 'Anônimo',
                 'email' => $solicitacao->email ?: '',
                 'telefone' => $solicitacao->telefone ?: '',
+				'cpf_cnpj' => $solicitacao->cpf_cnpj ?: '',
+           		 'endereco' => $solicitacao->endereco ?: '',
                 'mensagem' => nl2br(esc_html($solicitacao->mensagem)),
                 'arquivo' => null,
                 'respostas' => array()

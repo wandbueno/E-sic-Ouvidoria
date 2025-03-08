@@ -53,6 +53,13 @@ if (!defined('ABSPATH')) {
                     <input type="text" name="nome" id="nome" class="regular-text">
                 </td>
             </tr>
+			
+			 <tr class="campo-identificacao" style="display: none;">
+                <th><label for="cpf_cnpj">CPF/CNPJ *</label></th>
+                <td>
+                    <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="regular-text cpf-cnpj-mask">
+                </td>
+            </tr>
 
             <tr class="campo-identificacao" style="display: none;">
                 <th><label for="email">E-mail *</label></th>
@@ -65,6 +72,13 @@ if (!defined('ABSPATH')) {
                 <th><label for="telefone">Telefone</label></th>
                 <td>
                     <input type="tel" name="telefone" id="telefone" class="regular-text">
+                </td>
+            </tr>
+			
+			<tr class="campo-identificacao" style="display: none;">
+                <th><label for="endereco">Endereço Completo *</label></th>
+                <td>
+					<input type="text" name="endereco" id="endereco" class="regular-text" placeholder="Rua, número, bairro, cidade, estado e CEP">                    
                 </td>
             </tr>
 
@@ -91,3 +105,31 @@ if (!defined('ABSPATH')) {
         <div id="mensagem-resposta" class="notice" style="display: none;"></div>
     </form>
 </div>
+<script>
+jQuery(document).ready(function($) {
+    // Controle de campos de identificação
+    $('#identificacao').on('change', function() {
+        var valor = $(this).val();
+        if (valor === 'identificado') {
+            $('.campo-identificacao').show();
+            $('#nome, #email, #cpf_cnpj, #endereco').prop('required', true);
+        } else {
+            $('.campo-identificacao').hide();
+            $('#nome, #email, #cpf_cnpj, #endereco').prop('required', false);
+        }
+    });
+
+    // Máscara para CPF/CNPJ
+    $('#cpf_cnpj').on('input', function() {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value.length <= 11) {
+            // Máscara de CPF
+            value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        } else {
+            // Máscara de CNPJ
+            value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        }
+        $(this).val(value);
+    });
+});
+</script>
