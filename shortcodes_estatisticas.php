@@ -4,8 +4,13 @@ function ouvidoria_estatisticas_shortcode() {
 
     $plugin = sistema_ouvidoria();
     
-    // Obter o ano atual e criar lista de anos disponíveis
-    $ano_atual = isset($_GET['ano']) ? intval($_GET['ano']) : date('Y');
+    // Obter o ano selecionado ou usar 'todos' como padrão
+    $ano_atual = isset($_GET['ano']) ? $_GET['ano'] : 'todos';
+    
+    // Verificar se é um valor numérico (ano específico)
+    if ($ano_atual !== 'todos') {
+        $ano_atual = intval($ano_atual);
+    }
     
     // Buscar anos das estatísticas atuais e históricas
     $anos_atuais = $plugin->database->get_anos_disponiveis();
@@ -34,9 +39,10 @@ function ouvidoria_estatisticas_shortcode() {
             <div class="filtro-ano">
                 <label for="select-ano">Filtrar por ano:</label>
                 <select id="select-ano" class="select-ano">
+                    <option value="todos" <?php selected($ano_atual, 'todos'); ?>>Todas...</option>
                     <?php foreach ($todos_anos as $ano): ?>
                         <option value="<?php echo $ano; ?>" <?php selected($ano, $ano_atual); ?>>
-                            <?php echo $ano; ?> <?php echo $ano == date('Y') ? '(Atual)' : ''; ?>
+                            <?php echo $ano; ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

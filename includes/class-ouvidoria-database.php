@@ -647,6 +647,11 @@ public function inserir_solicitacao($dados) {
             $ano = date('Y');
         }
 
+        // Caso especial para "Todas..." - retornar dados de todos os anos
+        if ($ano === 'todos') {
+            return $this->get_estatisticas_totais();
+        }
+
         // Primeiro tentar buscar das estatísticas históricas
         $stats_historicas = $this->get_estatisticas_historicas($ano);
         
@@ -771,6 +776,166 @@ public function inserir_solicitacao($dados) {
                 GROUP BY identificacao
             ", OBJECT_K),
             'por_tipo_resposta' => $tipo_resposta,
+            'por_mes' => $por_mes
+        );
+    }
+
+    public function get_estatisticas_totais() {
+        // Inicializar contadores
+        $total = 0;
+        $pendentes = 0;
+        $em_analise = 0;
+        $concluidas = 0;
+        $indeferidas = 0;
+        $sistema = 0;
+        $presencial = 0;
+        
+        // Buscar dados das solicitações atuais
+        $total_solicitacoes = $this->wpdb->get_var("
+            SELECT COUNT(*) 
+            FROM {$this->table_solicitacoes}
+        ");
+        $total += (int)$total_solicitacoes;
+        
+        // Status nas solicitações atuais
+        $status = $this->wpdb->get_results("
+            SELECT status, COUNT(*) as total
+            FROM {$this->table_solicitacoes}
+            GROUP BY status
+        ", OBJECT_K);
+        
+        // Acumular status
+        $pendentes += isset($status['pendente']) ? (int)$status['pendente']->total : 0;
+        $em_analise += isset($status['em_analise']) ? (int)$status['em_analise']->total : 0;
+        $concluidas += isset($status['encerrado']) ? (int)$status['encerrado']->total : 0;
+        $indeferidas += isset($status['indeferida']) ? (int)$status['indeferida']->total : 0;
+        
+        // Tipo de resposta nas solicitações atuais
+        $tipo_resposta = $this->wpdb->get_results("
+            SELECT tipo_resposta, COUNT(*) as total
+            FROM {$this->table_solicitacoes}
+            GROUP BY tipo_resposta
+        ", OBJECT_K);
+        
+        // Acumular tipo de resposta
+        $sistema += isset($tipo_resposta['sistema']) ? (int)$tipo_resposta['sistema']->total : 0;
+        $presencial += isset($tipo_resposta['presencial']) ? (int)$tipo_resposta['presencial']->total : 0;
+
+        // Estatísticas por mês (para gráfico por mês)
+        $por_mes_query = $this->wpdb->get_results("
+            SELECT 
+                CONCAT(YEAR(data_criacao), '-', LPAD(MONTH(data_criacao), 2, '0')) as mes_ano,
+                COUNT(*) as total
+            FROM {$this->table_solicitacoes}
+            GROUP BY mes_ano
+            ORDER BY YEAR(data_criacao), MONTH(data_criacao)
+        ");
+        
+        // Processar resultados para o formato esperado
+        $por_mes = array();
+        foreach ($por_mes_query as $item) {
+            $por_mes[$item->mes_ano] = (object)array('total' => (int)$item->total);
+        }
+
+        // Dados por tipo de manifestação nas solicitações atuais
+        $tipos_query = $this->wpdb->get_results("
+            SELECT tipo_manifestacao, COUNT(*) as total
+            FROM {$this->table_solicitacoes}
+            GROUP BY tipo_manifestacao
+        ", OBJECT_K);
+        
+        // Processar para o formato esperado
+        $por_tipo = array(
+            'reclamacao' => (object)array('total' => 0),
+            'denuncia' => (object)array('total' => 0),
+            'sugestao' => (object)array('total' => 0),
+            'elogio' => (object)array('total' => 0),
+            'informacao' => (object)array('total' => 0)
+        );
+        
+        foreach ($tipos_query as $key => $value) {
+            if (isset($por_tipo[$key])) {
+                $por_tipo[$key]->total = (int)$value->total;
+            }
+        }
+        
+        // Dados por identificação nas solicitações atuais
+        $identificacao_query = $this->wpdb->get_results("
+            SELECT identificacao, COUNT(*) as total
+            FROM {$this->table_solicitacoes}
+            GROUP BY identificacao
+        ", OBJECT_K);
+        
+        // Processar para o formato esperado
+        $por_identificacao = array(
+            'identificado' => (object)array('total' => 0),
+            'anonimo' => (object)array('total' => 0)
+        );
+        
+        foreach ($identificacao_query as $key => $value) {
+            if (isset($por_identificacao[$key])) {
+                $por_identificacao[$key]->total = (int)$value->total;
+            }
+        }
+        
+        // BUSCAR TODOS OS DADOS DAS ESTATÍSTICAS HISTÓRICAS
+        $stats_historicas = $this->wpdb->get_results("
+            SELECT * 
+            FROM {$this->table_estatisticas_historicas}
+            ORDER BY ano, mes
+        ");
+        
+        // Combinar dados históricos
+        foreach ($stats_historicas as $stat) {
+            // Acumular totais
+            $total += (int)$stat->total_manifestacoes;
+            $pendentes += (int)$stat->pendentes;
+            $em_analise += (int)$stat->em_analise;
+            $concluidas += (int)$stat->encerradas;
+            $indeferidas += (int)$stat->indeferidas;
+            
+            // Acumular tipo de resposta
+            $sistema += (int)$stat->resposta_sistema;
+            $presencial += (int)$stat->resposta_presencial;
+            
+            // Acumular dados por mês
+            $mes_key = sprintf('%d-%02d', $stat->ano, $stat->mes);
+            if (isset($por_mes[$mes_key])) {
+                $por_mes[$mes_key]->total += (int)$stat->total_manifestacoes;
+            } else {
+                $por_mes[$mes_key] = (object)array('total' => (int)$stat->total_manifestacoes);
+            }
+            
+            // Acumular tipos de manifestação
+            $por_tipo['reclamacao']->total += (int)$stat->reclamacoes;
+            $por_tipo['denuncia']->total += (int)$stat->denuncias;
+            $por_tipo['sugestao']->total += (int)$stat->sugestoes;
+            $por_tipo['elogio']->total += (int)$stat->elogios;
+            $por_tipo['informacao']->total += (int)$stat->informacoes;
+            
+            // Acumular identificação
+            $por_identificacao['identificado']->total += (int)$stat->identificadas;
+            $por_identificacao['anonimo']->total += (int)$stat->anonimas;
+        }
+        
+        // Ordenar o array por_mes cronologicamente
+        ksort($por_mes);
+        
+        // Formatação para saída
+        $por_tipo_resposta = array(
+            'sistema' => (object)array('total' => $sistema),
+            'presencial' => (object)array('total' => $presencial)
+        );
+
+        return array(
+            'total' => $total,
+            'pendentes' => $pendentes,
+            'em_analise' => $em_analise,
+            'concluidas' => $concluidas,
+            'indeferidas' => $indeferidas,
+            'por_tipo' => $por_tipo,
+            'por_identificacao' => $por_identificacao,
+            'por_tipo_resposta' => $por_tipo_resposta,
             'por_mes' => $por_mes
         );
     }
