@@ -70,61 +70,69 @@ class Ouvidoria_PDF {
 
         $dompdf = new \Dompdf\Dompdf($options);
         
-        // Gerar conteúdo HTML para o PDF
-        $html = '<!DOCTYPE html>
+        // Obter nome do órgão das opções do sistema
+        $config = get_option('ouvidoria_options', array());
+        $nome_orgao = isset($config['nome_orgao']) ? $config['nome_orgao'] : 'Prefeitura Municipal';
+        
+        // Começar a construir o HTML
+        $html = '
+        <!DOCTYPE html>
         <html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-            <title>' . esc_html($dados['Título']) . '</title>
             <style>
                 body {
-                    font-family: "DejaVu Sans", sans-serif;
+                    font-family: DejaVu Sans, sans-serif;
                     font-size: 12px;
                     line-height: 1.5;
                 }
                 h1 {
-                    font-size: 18px;
+                    font-size: 16px;
                     text-align: center;
-                    margin-bottom: 20px;
-                    color: #1a3c5a;
+                    margin-bottom: 5px;
                 }
                 h2 {
-                    font-size: 16px;
-                    color: #1a3c5a;
-                    border-bottom: 1px solid #ccc;
-                    padding-bottom: 5px;
-                    margin-top: 20px;
+                    font-size: 14px;
+                    text-align: center;
+                    margin-top: 5px;
+                    margin-bottom: 20px;
                 }
                 .data-geracao {
-                    text-align: right;
-                    font-size: 10px;
-                    margin-bottom: 30px;
+                    text-align: center;
+                    margin-bottom: 20px;
+                    font-size: 11px;
                 }
                 table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-bottom: 20px;
                 }
-                table th, table td {
+                table, th, td {
+                    border: 1px solid #ddd;
+                }
+                th {
+                    background-color: #f2f2f2;
                     padding: 8px;
                     text-align: left;
-                    border-bottom: 1px solid #ddd;
                 }
-                table th {
-                    background-color: #f2f2f2;
+                td {
+                    padding: 8px;
+                }
+                .section-title {
                     font-weight: bold;
+                    margin-top: 15px;
+                    margin-bottom: 10px;
+                    font-size: 13px;
                 }
-                .footer {
-                    text-align: center;
-                    font-size: 10px;
-                    margin-top: 30px;
-                    color: #666;
+                .page-break {
+                    page-break-after: always;
                 }
             </style>
         </head>
         <body>
-            <h1>' . esc_html($dados['Título']) . '</h1>
-            <div class="data-geracao">Data de Geração: ' . esc_html($dados['Data de Geração']) . '</div>
+            <h1>' . esc_html($nome_orgao) . '</h1>
+            <h2>' . esc_html($dados['Título']) . '</h2>
+            <div class="data-geracao">Data de geração: ' . esc_html($dados['Data de Geração']) . '</div>
             
             <h2>Resumo Geral</h2>
             <table>

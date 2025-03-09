@@ -34,8 +34,12 @@ function ouvidoria_estatisticas_shortcode() {
     ?>
     <div class="ouvidoria-estatisticas">
         <div class="estatisticas-header">
-            <div class="header-title-export">
-                <h2>Estatísticas da Ouvidoria / E-Sic</h2>
+            <h2>Estatísticas da Ouvidoria / E-Sic</h2>
+            <p>Dados atualizados em: <?php echo wp_date('d/m/Y H:i'); ?></p>
+            
+            <!-- Botões de exportação -->
+            <div class="export-container">
+                <span class="export-label">Exportar:</span>
                 <div class="export-buttons">
                     <?php $nonce = wp_create_nonce('exportar_estatisticas'); ?>
                     <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=exportar_estatisticas&tipo=pdf&ano=' . $ano_atual . '&nonce=' . $nonce)); ?>" class="export-button pdf" title="Exportar para PDF">
@@ -49,7 +53,6 @@ function ouvidoria_estatisticas_shortcode() {
                     </a>
                 </div>
             </div>
-            <p>Dados atualizados em: <?php echo wp_date('d/m/Y H:i'); ?></p>
 
             <!-- Filtro de Ano -->
             <div class="filtro-ano">
@@ -206,6 +209,19 @@ function ouvidoria_estatisticas_shortcode() {
         text-align: center;
         margin-bottom: 30px;
     }
+    
+    .estatisticas-header h2 {
+        margin: 0 0 10px 0;
+        text-align: center;
+        font-size: 24px;
+        color: #333;
+    }
+    
+    .estatisticas-header p {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #666;
+    }
 
     /* Cards de Estatísticas */
     .estatisticas-cards {
@@ -328,15 +344,17 @@ function ouvidoria_estatisticas_shortcode() {
         }
     }
 
-    .header-title-export {
+    .export-container {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-bottom: 15px;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 15px;
     }
 
-    .header-title-export h2 {
-        margin: 0;
+    .export-label {
+        font-weight: 500;
+        color: #666;
     }
 
     .export-buttons {
@@ -381,7 +399,7 @@ function ouvidoria_estatisticas_shortcode() {
 
     /* Estilo responsivo para o cabeçalho */
     @media (max-width: 767px) {
-        .header-title-export {
+        .estatisticas-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 10px;
