@@ -1,7 +1,9 @@
 <?php
 function ouvidoria_estatisticas_shortcode() {
     wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '3.7.0', true);
+    wp_enqueue_style('dashicons');
 
+    // Obter o plugin
     $plugin = sistema_ouvidoria();
     
     // Obter o ano selecionado ou usar 'todos' como padrão
@@ -32,7 +34,21 @@ function ouvidoria_estatisticas_shortcode() {
     ?>
     <div class="ouvidoria-estatisticas">
         <div class="estatisticas-header">
-            <h2>Estatísticas da Ouvidoria / E-Sic</h2>
+            <div class="header-title-export">
+                <h2>Estatísticas da Ouvidoria / E-Sic</h2>
+                <div class="export-buttons">
+                    <?php $nonce = wp_create_nonce('exportar_estatisticas'); ?>
+                    <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=exportar_estatisticas&tipo=pdf&ano=' . $ano_atual . '&nonce=' . $nonce)); ?>" class="export-button pdf" title="Exportar para PDF">
+                        <span class="dashicons dashicons-pdf"></span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=exportar_estatisticas&tipo=csv&ano=' . $ano_atual . '&nonce=' . $nonce)); ?>" class="export-button csv" title="Exportar para CSV">
+                        <span class="dashicons dashicons-media-spreadsheet"></span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin-ajax.php?action=exportar_estatisticas&tipo=excel&ano=' . $ano_atual . '&nonce=' . $nonce)); ?>" class="export-button excel" title="Exportar para Excel">
+                        <span class="dashicons dashicons-media-interactive"></span>
+                    </a>
+                </div>
+            </div>
             <p>Dados atualizados em: <?php echo wp_date('d/m/Y H:i'); ?></p>
 
             <!-- Filtro de Ano -->
@@ -311,6 +327,66 @@ function ouvidoria_estatisticas_shortcode() {
             grid-template-columns: 1fr;
         }
     }
+
+    .header-title-export {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+
+    .header-title-export h2 {
+        margin: 0;
+    }
+
+    .export-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .export-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .export-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .export-button .dashicons {
+        color: white;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+
+    .export-button.pdf {
+        background: #e74c3c;
+    }
+
+    .export-button.csv {
+        background: #3498db;
+    }
+
+    .export-button.excel {
+        background: #27ae60;
+    }
+
+    /* Estilo responsivo para o cabeçalho */
+    @media (max-width: 767px) {
+        .header-title-export {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+    }
     </style>
 
     <script>
@@ -478,6 +554,337 @@ function ouvidoria_estatisticas_shortcode() {
     </script>
     <?php
     return ob_get_clean();
+}
+
+add_action('wp_ajax_exportar_estatisticas', 'ouvidoria_ajax_exportar_estatisticas');
+add_action('wp_ajax_nopriv_exportar_estatisticas', 'ouvidoria_ajax_exportar_estatisticas');
+
+function ouvidoria_ajax_exportar_estatisticas() {
+    // Verificar o nonce para segurança
+    if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'exportar_estatisticas')) {
+        wp_die('Link de exportação inválido ou expirado.');
+    }
+    
+    // Obter parâmetros
+    $export_type = isset($_GET['tipo']) ? sanitize_text_field($_GET['tipo']) : '';
+    $ano = isset($_GET['ano']) ? sanitize_text_field($_GET['ano']) : 'todos';
+    
+    if (empty($export_type) || !in_array($export_type, array('pdf', 'csv', 'excel'))) {
+        wp_die('Tipo de exportação inválido.');
+    }
+    
+    $plugin = sistema_ouvidoria();
+    
+    try {
+        // Obter dados das estatísticas
+        if ($ano === 'todos') {
+            $stats = $plugin->database->get_estatisticas_totais();
+        } else {
+            $stats = $plugin->database->get_estatisticas(intval($ano));
+        }
+        
+        if (!$stats || !is_array($stats)) {
+            wp_die('Não foi possível obter os dados das estatísticas.');
+        }
+        
+        // Exportar de acordo com o tipo solicitado
+        if ($export_type === 'pdf') {
+            ouvidoria_exportar_pdf($stats, $ano);
+        } elseif ($export_type === 'csv') {
+            ouvidoria_exportar_csv($stats, $ano);
+        } elseif ($export_type === 'excel') {
+            ouvidoria_exportar_excel($stats, $ano);
+        }
+    } catch (Exception $e) {
+        wp_die('Erro ao exportar: ' . $e->getMessage());
+    }
+    
+    // Se chegou aqui, algo deu errado
+    wp_die('Não foi possível gerar o arquivo de exportação.');
+}
+
+function ouvidoria_exportar_pdf($stats, $ano) {
+    // Formatar o título com base no ano selecionado
+    $titulo_ano = ($ano === 'todos') ? 'Todas as Estatísticas' : "Estatísticas do Ano $ano";
+    
+    // Gerar o nome do arquivo com data atual
+    $data_atual = wp_date('Y-m-d_H-i');
+    $filename = "estatisticas_ouvidoria_" . sanitize_title($titulo_ano) . "_" . $data_atual;
+    
+    // Preparar dados estatísticos para exportação
+    $dados = array(
+        'Título' => "Estatísticas da Ouvidoria / E-Sic - $titulo_ano",
+        'Data de Geração' => wp_date('d/m/Y H:i'),
+        'Resumo' => array(
+            'Total de Solicitações' => $stats['total'],
+            'Pendentes' => $stats['pendentes'],
+            'Em Análise' => $stats['em_analise'],
+            'Concluídas' => $stats['concluidas'],
+            'Indeferidas' => $stats['indeferidas']
+        ),
+        'Por Tipo' => array(),
+        'Por Identificação' => array(),
+        'Por Forma de Recebimento' => array(),
+        'Por Mês' => array()
+    );
+    
+    // Formatar dados por tipo de manifestação
+    foreach ($stats['por_tipo'] as $tipo => $valor) {
+        $nome_tipo = ucfirst(str_replace('_', ' ', $tipo));
+        $dados['Por Tipo'][$nome_tipo] = $valor->total;
+    }
+    
+    // Formatar dados por tipo de identificação
+    foreach ($stats['por_identificacao'] as $tipo => $valor) {
+        $nome_tipo = ($tipo === 'identificado') ? 'Identificado' : 'Anônimo';
+        $dados['Por Identificação'][$nome_tipo] = $valor->total;
+    }
+    
+    // Formatar dados por tipo de resposta
+    foreach ($stats['por_tipo_resposta'] as $tipo => $valor) {
+        $nome_tipo = ($tipo === 'sistema') ? 'Sistema' : 'Presencial';
+        $dados['Por Forma de Recebimento'][$nome_tipo] = $valor->total;
+    }
+    
+    // Formatar dados por mês
+    foreach ($stats['por_mes'] as $mes_key => $valor) {
+        list($ano_mes, $mes_num) = explode('-', $mes_key);
+        $nome_mes = wp_date('M Y', strtotime($mes_key . '-01'));
+        $dados['Por Mês'][$nome_mes] = $valor->total;
+    }
+    
+    // Verificar se a classe de PDF existe
+    if (!class_exists('Ouvidoria_PDF')) {
+        // Verificar se podemos incluir a classe
+        $pdf_class_file = plugin_dir_path(dirname(__FILE__)) . 'includes/class-ouvidoria-pdf.php';
+        if (file_exists($pdf_class_file)) {
+            include_once $pdf_class_file;
+        } else {
+            wp_die('Classe de geração de PDF não encontrada.');
+        }
+    }
+    
+    // Gerar o PDF
+    $pdf = new Ouvidoria_PDF();
+    $pdf->gerar_estatisticas_pdf($dados, $filename);
+    exit;
+}
+
+function ouvidoria_exportar_csv($stats, $ano) {
+    // Formatar o título com base no ano selecionado
+    $titulo_ano = ($ano === 'todos') ? 'Todas as Estatísticas' : "Estatísticas do Ano $ano";
+    
+    // Gerar o nome do arquivo com data atual
+    $data_atual = wp_date('Y-m-d_H-i');
+    $filename = "estatisticas_ouvidoria_" . sanitize_title($titulo_ano) . "_" . $data_atual;
+    
+    // Dados para exportação
+    $titulo = "Estatísticas da Ouvidoria / E-Sic - $titulo_ano";
+    $data_geracao = wp_date('d/m/Y H:i');
+    
+    // Enviar headers para download
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
+    
+    // Criar o arquivo CSV na saída
+    $output = fopen('php://output', 'w');
+    
+    // Adicionar BOM para UTF-8
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // Adicionar título e data
+    fputcsv($output, array($titulo));
+    fputcsv($output, array('Data de Geração:', $data_geracao));
+    fputcsv($output, array()); // Linha em branco
+    
+    // Adicionar resumo
+    fputcsv($output, array('Resumo Geral'));
+    fputcsv($output, array('Total de Solicitações', $stats['total']));
+    fputcsv($output, array('Pendentes', $stats['pendentes']));
+    fputcsv($output, array('Em Análise', $stats['em_analise']));
+    fputcsv($output, array('Concluídas', $stats['concluidas']));
+    fputcsv($output, array('Indeferidas', $stats['indeferidas']));
+    fputcsv($output, array()); // Linha em branco
+    
+    // Adicionar dados por tipo
+    fputcsv($output, array('Por Tipo de Manifestação'));
+    foreach ($stats['por_tipo'] as $tipo => $valor) {
+        $nome_tipo = ucfirst(str_replace('_', ' ', $tipo));
+        fputcsv($output, array($nome_tipo, $valor->total));
+    }
+    fputcsv($output, array()); // Linha em branco
+    
+    // Adicionar dados por identificação
+    fputcsv($output, array('Por Tipo de Identificação'));
+    foreach ($stats['por_identificacao'] as $tipo => $valor) {
+        $nome_tipo = ($tipo === 'identificado') ? 'Identificado' : 'Anônimo';
+        fputcsv($output, array($nome_tipo, $valor->total));
+    }
+    fputcsv($output, array()); // Linha em branco
+    
+    // Adicionar dados por forma de recebimento
+    fputcsv($output, array('Por Forma de Recebimento'));
+    foreach ($stats['por_tipo_resposta'] as $tipo => $valor) {
+        $nome_tipo = ($tipo === 'sistema') ? 'Sistema' : 'Presencial';
+        fputcsv($output, array($nome_tipo, $valor->total));
+    }
+    fputcsv($output, array()); // Linha em branco
+    
+    // Adicionar dados por mês
+    fputcsv($output, array('Por Mês'));
+    foreach ($stats['por_mes'] as $mes_key => $valor) {
+        list($ano_mes, $mes_num) = explode('-', $mes_key);
+        $nome_mes = wp_date('M Y', strtotime($mes_key . '-01'));
+        fputcsv($output, array($nome_mes, $valor->total));
+    }
+    
+    fclose($output);
+    exit;
+}
+
+function ouvidoria_exportar_excel($stats, $ano) {
+    // Formatar o título com base no ano selecionado
+    $titulo_ano = ($ano === 'todos') ? 'Todas as Estatísticas' : "Estatísticas do Ano $ano";
+    
+    // Gerar o nome do arquivo com data atual
+    $data_atual = wp_date('Y-m-d_H-i');
+    $filename = "estatisticas_ouvidoria_" . sanitize_title($titulo_ano) . "_" . $data_atual;
+    
+    // Dados para exportação
+    $titulo = "Estatísticas da Ouvidoria / E-Sic - $titulo_ano";
+    $data_geracao = wp_date('d/m/Y H:i');
+    
+    // Verificar se a biblioteca PhpSpreadsheet está disponível
+    if (!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+        // Tentar carregar via autoload
+        if (file_exists(plugin_dir_path(dirname(__FILE__)) . 'vendor/autoload.php')) {
+            require_once plugin_dir_path(dirname(__FILE__)) . 'vendor/autoload.php';
+        } else {
+            // Fallback para CSV caso o PhpSpreadsheet não esteja disponível
+            ouvidoria_exportar_csv($stats, $ano);
+            return;
+        }
+    }
+    
+    try {
+        // Criar novo spreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Adicionar título e data
+        $sheet->setCellValue('A1', $titulo);
+        $sheet->mergeCells('A1:D1');
+        $sheet->setCellValue('A2', 'Data de Geração:');
+        $sheet->setCellValue('B2', $data_geracao);
+        
+        // Estilizar título
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1:D1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        
+        // Adicionar resumo
+        $row = 4;
+        $sheet->setCellValue('A' . $row, 'Resumo Geral');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        $sheet->setCellValue('A' . $row, 'Total de Solicitações');
+        $sheet->setCellValue('B' . $row, $stats['total']);
+        $row++;
+        
+        $sheet->setCellValue('A' . $row, 'Pendentes');
+        $sheet->setCellValue('B' . $row, $stats['pendentes']);
+        $row++;
+        
+        $sheet->setCellValue('A' . $row, 'Em Análise');
+        $sheet->setCellValue('B' . $row, $stats['em_analise']);
+        $row++;
+        
+        $sheet->setCellValue('A' . $row, 'Concluídas');
+        $sheet->setCellValue('B' . $row, $stats['concluidas']);
+        $row++;
+        
+        $sheet->setCellValue('A' . $row, 'Indeferidas');
+        $sheet->setCellValue('B' . $row, $stats['indeferidas']);
+        $row++;
+        
+        $row++; // Linha em branco
+        
+        // Adicionar dados por tipo
+        $sheet->setCellValue('A' . $row, 'Por Tipo de Manifestação');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        foreach ($stats['por_tipo'] as $tipo => $valor) {
+            $nome_tipo = ucfirst(str_replace('_', ' ', $tipo));
+            $sheet->setCellValue('A' . $row, $nome_tipo);
+            $sheet->setCellValue('B' . $row, $valor->total);
+            $row++;
+        }
+        
+        $row++; // Linha em branco
+        
+        // Adicionar dados por identificação
+        $sheet->setCellValue('A' . $row, 'Por Tipo de Identificação');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        foreach ($stats['por_identificacao'] as $tipo => $valor) {
+            $nome_tipo = ($tipo === 'identificado') ? 'Identificado' : 'Anônimo';
+            $sheet->setCellValue('A' . $row, $nome_tipo);
+            $sheet->setCellValue('B' . $row, $valor->total);
+            $row++;
+        }
+        
+        $row++; // Linha em branco
+        
+        // Adicionar dados por forma de recebimento
+        $sheet->setCellValue('A' . $row, 'Por Forma de Recebimento');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        foreach ($stats['por_tipo_resposta'] as $tipo => $valor) {
+            $nome_tipo = ($tipo === 'sistema') ? 'Sistema' : 'Presencial';
+            $sheet->setCellValue('A' . $row, $nome_tipo);
+            $sheet->setCellValue('B' . $row, $valor->total);
+            $row++;
+        }
+        
+        $row++; // Linha em branco
+        
+        // Adicionar dados por mês
+        $sheet->setCellValue('A' . $row, 'Por Mês');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        foreach ($stats['por_mes'] as $mes_key => $valor) {
+            list($ano_mes, $mes_num) = explode('-', $mes_key);
+            $nome_mes = wp_date('M Y', strtotime($mes_key . '-01'));
+            $sheet->setCellValue('A' . $row, $nome_mes);
+            $sheet->setCellValue('B' . $row, $valor->total);
+            $row++;
+        }
+        
+        // Auto ajustar largura das colunas
+        foreach(range('A', 'D') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Criar o Writer
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        
+        // Configurar headers para download
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        // Salvar para saída
+        $writer->save('php://output');
+        exit;
+        
+    } catch (Exception $e) {
+        // Fallback para CSV em caso de erro
+        ouvidoria_exportar_csv($stats, $ano);
+    }
 }
 
 add_shortcode('ouvidoria_estatisticas', 'ouvidoria_estatisticas_shortcode');
