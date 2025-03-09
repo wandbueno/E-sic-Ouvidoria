@@ -127,10 +127,17 @@ class Ouvidoria_PDF {
                 .page-break {
                     page-break-after: always;
                 }
+                .footer {
+                    position: fixed;
+                    bottom: 10px;
+                    width: 100%;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #666;
+                }
             </style>
         </head>
         <body>
-            <h1>' . esc_html($nome_orgao) . '</h1>
             <h2>' . esc_html($dados['Título']) . '</h2>
             <div class="data-geracao">Data de geração: ' . esc_html($dados['Data de Geração']) . '</div>
             
@@ -215,7 +222,7 @@ class Ouvidoria_PDF {
         $html .= '</table>
             
             <div class="footer">
-                Relatório gerado automaticamente pelo Sistema de Ouvidoria / E-Sic
+                Relatório gerado a partir de: ' . (isset($_SERVER['HTTP_REFERER']) ? esc_url($_SERVER['HTTP_REFERER']) : site_url()) . '
             </div>
         </body>
         </html>';
